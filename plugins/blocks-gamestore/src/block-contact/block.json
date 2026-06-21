@@ -6,7 +6,7 @@
 	"title": "Contact form",
 	"category": "widgets",
 	"icon": "smiley",
-	"description": "Contact block.",
+	"description": "Contact block",
 	"example": {},
 	"supports": {
 		"html": false

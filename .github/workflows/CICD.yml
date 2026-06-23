@@ -1,0 +1,73 @@
+name: GameStore Deploy
+
+on:
+  push:
+    branches:
+      - dev
+  release:
+    types: [published]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Prepare WordPress Zip
+        run: |
+          WP_LINK=$(cat wp-version-control.cfg)
+          wget -O "./wordpress.zip" "$WP_LINK"
+      - name: Prepare plugins and theme zip
+        run: zip -r wpcontent.zip plugins mu-plugins themes
+      - name: Copy Zips to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "./wordpress.zip, ./wpcontent.zip"
+          target: ${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}
+      - name: Enable Maintenance Mode
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: ".maintenance"
+          target: ${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}
+      - name: Update Wordpress Core
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            find "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}" -type f -name "*.php" ! -name "wp-config.php" -delete
+            rm -r "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wp-admin/" "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wp-includes/"
+            unzip "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wordpress.zip" -d "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/"
+            mv "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wordpress/"* "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/"
+            rm -r "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wordpress"
+      - name: Update Plugins and Theme
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            rm -rf "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wp-content/plugins/" "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wp-content/mu-plugins/" "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wp-content/themes/"
+            unzip "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wpcontent.zip" -d "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wp-content/"
+      - name: Disable Maintenance Mode and Remove
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            rm -f "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/.maintenance"
+            rm -f "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wpcontent.zip"
+            rm -f "${{ github.event_name == 'push' && '/home/jezice01/dev.jezicek.si' || '/home/jezice01/live.jezicek.si' }}/wordpress.zip"

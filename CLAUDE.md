@@ -135,3 +135,10 @@ npm run build  # финальная сборка для продакшена
 3. `docker compose up -d` — дождаться первого запуска WP (создаст `.srv/wordpress`).
 4. Пройти установку WP через браузер (http://localhost:8000).
 5. Положить тему/плагины в соответствующие корневые папки — подхватятся автоматически через volume.
+
+### CI/CD (деплой) — настроен
+Хостинг: **Domenca** (cPanel, пакет MAX M, до 5 сайтов, ~12€/год).
+
+`.github/workflows/CICD.yml` активен — деплоит по SSH/SCP при пуше в `dev` (на dev-поддомен) и при публикации release (на live-поддомен). Логика пайплайна: zip ядра WP + zip `plugins/mu-plugins/themes` → копирование на сервер → maintenance mode → распаковка → снятие maintenance mode.
+
+Нужные секреты в GitHub (Settings → Secrets and variables → Actions): `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD`, `SSH_PORT` — данные берутся из cPanel хостинга Domenca (раздел SSH Access).
